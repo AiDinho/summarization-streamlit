@@ -10,11 +10,19 @@ import re
 
 
 from keybert import KeyBERT
+from rouge_score import rouge_scorer
+
 
 import nltk
 nltk.download('punkt')
 from nltk import  sent_tokenize
 
+
+
+def calculate_rouge(reference, summary):
+    scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
+    scores = scorer.score(reference, summary)
+    return scores
 
 # Function to download and preprocess Gutenberg books
 def download_gutenberg_book(book_id):
@@ -82,9 +90,9 @@ corpus = [chunk for chunks in preprocessed_books.values() for chunk in chunks]
 
 
 # Initialize models and tokenizer
-@st.cache(allow_output_mutation=True)
+@st.cache_resource
 def initialize_models():
-    summarizer = pipeline("summarization")
+    summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
     tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
     model = AutoModelForSeq2SeqLM.from_pretrained("facebook/bart-large-cnn")
     embed_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
@@ -96,7 +104,7 @@ summarizer, tokenizer, model, embed_model, keyword_model = initialize_models()
 
 
 # Load dataset
-@st.cache(allow_output_mutation=True)
+@st.cache_data
 def load_booksum_dataset():
     return load_dataset("kmfoda/booksum", split="test")
 
@@ -105,7 +113,7 @@ booksum_dataset = load_booksum_dataset()
 
 
 # Load FAISS index
-@st.cache(allow_output_mutation=True)
+@st.cache_resource
 def load_faiss_index(corpus):
     corpus_embeddings = embed_model.encode(corpus)
     #corpus_embeddings = corpus_embeddings.detach().numpy()  # Convert tensor to numpy array
@@ -199,8 +207,10 @@ selected_book_id = st.sidebar.selectbox("Choose a book BID", book_ids)
 
 # Get the book text from the dataset
 book_text = [book['chapter'] for book in booksum_dataset if book['bid'] == selected_book_id][0]
+reference_summary = [book['summary'] for book in booksum_dataset if book['bid'] == selected_book_id][0]
+
 st.subheader(f"Text of the book with BID: {selected_book_id}")
-st.write(book_text[:2000] + "...")  # Display only the first 2000 characters for brevity
+st.write(book_text[:200] + "...")  # Display only the first 2000 characters for brevity
 
 # Option to download the book from Project Gutenberg and update FAISS index
 if st.button("Download and Add Book to Index"):
@@ -217,6 +227,9 @@ if st.button("Generate Summaries"):
         baseline_summary = generate_summary(book_text)
         st.subheader("Baseline Summary")
         st.write(baseline_summary)
+        baseline_rouge_scores = calculate_rouge(reference_summary, baseline_summary)
+        st.write("Baseline ROUGE Scores:")
+        st.json(baseline_rouge_scores)
         print(gutenberg_books.keys())
         if selected_book_id in st.session_state['downloaded_books']:
             rag_concat_summary = rag_summarize_concat(book_text)
@@ -226,11 +239,22 @@ if st.button("Generate Summaries"):
             st.subheader("RAG Concatenation Summary")
             st.write(rag_concat_summary)
 
+            rag_concat_rouge_scores = calculate_rouge(reference_summary, rag_concat_summary)
+            st.write("RAG Concatenation ROUGE Scores:")
+            st.json(rag_concat_rouge_scores)
+
             st.subheader("RAG Extracted Summary")
             st.write(rag_extracted_summary)
+            rag_extracted_rouge_scores = calculate_rouge(reference_summary, rag_extracted_summary)
+            st.write("RAG Extracted ROUGE Scores:")
+            st.json(rag_extracted_rouge_scores)
 
             st.subheader("RAG Guided Summary")
             st.write(rag_guided_summary)
+
+            rag_guided_rouge_scores = calculate_rouge(reference_summary, rag_guided_summary)
+            st.write("RAG Guided ROUGE Scores:")
+            st.json(rag_guided_rouge_scores)
         else:
             st.warning("Download and add the book to the index to generate RAG summaries.")
 

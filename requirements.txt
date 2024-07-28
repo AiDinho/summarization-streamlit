@@ -7,3 +7,4 @@ bs4
 keybert
 nltk
 sentence_transformers
+rouge_score
