@@ -1,0 +1,9 @@
+streamlit
+datasets
+transformers
+faiss-cpu
+requests
+bs4
+keybert
+nltk
+sentence_transformers
