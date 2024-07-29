@@ -24,7 +24,7 @@ def calculate_rouge(reference, summary):
     scores = scorer.score(reference, summary)
     return scores
 
-# Function to download and preprocess Gutenberg books
+
 def download_gutenberg_book(book_id):
     url = f"https://www.gutenberg.org/files/{book_id}/{book_id}-h/{book_id}-h.htm"
     response = requests.get(url)
@@ -37,16 +37,16 @@ def download_gutenberg_book(book_id):
 
 # Download some Gutenberg books
 gutenberg_books = {
-    11: download_gutenberg_book(11),  # Alice in Wonderland
-    1342: download_gutenberg_book(1342),  # Pride and Prejudice
-    1661: download_gutenberg_book(1661)  # The Adventures of Sherlock Holmes
+    11: download_gutenberg_book(11),
+    1342: download_gutenberg_book(1342),
+    1661: download_gutenberg_book(1661)
 }
 
 # Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
 
 def preprocess_book(text):
-    # Remove extra whitespace and special characters
+
     text = re.sub(r'\s+', ' ', text)
     text = re.sub(r'[^\w\s.!?]', '', text)
     text = text.lower()
@@ -197,7 +197,7 @@ def rag_summarize_guided(text):
     return tokenizer.decode(guided_summary_ids[0], skip_special_tokens=True)
 
 
-# Streamlit app layout
+
 st.title("Book Summarization and Evaluation")
 
 # Sidebar for book selection
@@ -212,7 +212,6 @@ reference_summary = [book['summary'] for book in booksum_dataset if book['bid'] 
 st.subheader(f"Text of the book with BID: {selected_book_id}")
 st.write(book_text[:200] + "...")  # Display only the first 2000 characters for brevity
 
-# Option to download the book from Project Gutenberg and update FAISS index
 if st.button("Download and Add Book to Index"):
     with st.spinner("Downloading and processing book..."):
         new_book_text = download_gutenberg_book(selected_book_id)
@@ -221,7 +220,6 @@ if st.button("Download and Add Book to Index"):
         st.session_state['downloaded_books'][selected_book_id] = new_book_text
         st.success("Book added to FAISS index.")
 
-# Generate summaries
 if st.button("Generate Summaries"):
     with st.spinner("Generating summaries..."):
         baseline_summary = generate_summary(book_text)
